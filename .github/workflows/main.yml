@@ -6,19 +6,21 @@ jobs:
     name: MacRDP
     runs-on: macos-latest
     
-    steps:                 
-    - name: Enabling Remote Access
-      env:
-        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
-      run: |
-          curl -s -o start.sh -L "https://raw.githubusercontent.com/JohnnyNetsec/github-vm/main/mac/start.sh"
-          chmod +x start.sh
-          bash start.sh "$NGROK_AUTH_TOKEN"
-          
-    - name: Log In Details To VNC Server
-      run: |
-         chmod +x login.sh
-         bash login.sh
-         
-    - name: MacOS System running...
-      uses: mxschmitt/action-tmate@v2
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set Up Anydesk
+        run: |
+          curl -o Anydesk.dmg https://download.anydesk.com/anydesk.dmg
+          hdiutil attach Anydesk.dmg
+          sudo cp -R /Volumes/AnyDesk/AnyDesk.app /Applications
+          hdiutil detach /Volumes/AnyDesk
+
+      - name: Set up unattended access
+        run: |
+          echo -n "password_hash" > ~/Library/Application\ Support/AnyDesk/service.conf
+          echo -n "YourStrongPassword" >> ~/Library/Application\ Support/AnyDesk/service.conf
+
+      - name: MacOS System running...
+        uses: mxschmitt/action-tmate@v2
