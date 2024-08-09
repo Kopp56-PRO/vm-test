@@ -7,22 +7,48 @@ jobs:
     runs-on: macos-latest
 
     steps:
-    - name: Install tmate
+    - name: Install RustDesk
       run: |
-        brew install tmate || echo "tmate is already installed"
+        # Download RustDesk
+        curl -L -o rustdesk.dmg "https://github.com/rustdesk/rustdesk/releases/latest/download/RustDesk-darwin-x64.dmg"
 
-    - name: Setup or Use Existing tmate Session
+        # Mount the DMG
+        hdiutil attach rustdesk.dmg -nobrowse -quiet
+        sudo cp -R /Volumes/RustDesk/RustDesk.app /Applications/
+        hdiutil detach /Volumes/RustDesk -quiet
+
+    - name: Setup RustDesk
       run: |
-        if tmate -S /tmp/tmate.sock has-session 2>/dev/null; then
-          echo "Using existing tmate session."
-        else
-          tmate -S /tmp/tmate.sock new-session -d
-          tmate -S /tmp/tmate.sock wait tmate-ready
-        fi
-        SSH_INFO=$(tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}')
-        WEB_INFO=$(tmate -S /tmp/tmate.sock display -p '#{tmate_web}')
-        echo "SSH access: $SSH_INFO"
-        echo "Web-based terminal: $WEB_INFO"
+        # Start RustDesk in background
+        open -a RustDesk
 
-    - name: Keep Session Alive
-      run: sleep 3600  # Keeps the session alive for 1 hour; adjust as needed
+        # Wait for RustDesk to initialize
+        sleep 30  # Adjust the sleep duration if necessary
+
+    - name: Retrieve RustDesk ID
+      run: |
+        # Use AppleScript to get RustDesk ID
+        rustDeskID=$(osascript <<EOF
+        tell application "RustDesk"
+          activate
+          delay 10  # Adjust the delay as needed
+          -- Insert code here to interact with RustDesk and retrieve the ID
+          set rustDeskID to (do shell script "ps aux | grep RustDesk | grep -v grep | awk '{print $2}'")
+          return rustDeskID
+        end tell
+        EOF
+        )
+        echo "RustDesk ID: $rustDeskID"
+        echo "$rustDeskID" > rustdesk_id.txt
+
+    - name: Send RustDesk ID to Webhook
+      env:
+        WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+      run: |
+        rustDeskID=$(cat rustdesk_id.txt)
+        curl -X POST $WEBHOOK_URL \
+          -H "Content-Type: application/json" \
+          -d '{"rustDeskID": "'"$rustDeskID"'"}'
+
+    - name: Keep MacOS Runner Active
+      run: sleep 3600  # Keeps the runner active for 1 hour; adjust as needed
