@@ -1,26 +1,21 @@
 name: MacRDP
-on: 
+on:
   workflow_dispatch:
 jobs:
   build:
     name: MacRDP
     runs-on: macos-latest
-    
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      - name: Set Up Anydesk
-        run: |
-          curl -o Anydesk.dmg https://download.anydesk.com/anydesk.dmg
-          hdiutil attach Anydesk.dmg
-          sudo cp -R /Volumes/AnyDesk/AnyDesk.app /Applications
-          hdiutil detach /Volumes/AnyDesk
-
-      - name: Set up unattended access
-        run: |
-          echo -n "password_hash" > ~/Library/Application\ Support/AnyDesk/service.conf
-          echo -n "YourStrongPassword" >> ~/Library/Application\ Support/AnyDesk/service.conf
-
-      - name: MacOS System running...
-        uses: mxschmitt/action-tmate@v2
+    - name: Install and Setup tmate
+      run: |
+        brew install tmate
+        tmate -S /tmp/tmate.sock new-session -d
+        tmate -S /tmp/tmate.sock wait tmate-ready
+        SSH_INFO=$(tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}')
+        WEB_INFO=$(tmate -S /tmp/tmate.sock display -p '#{tmate_web}')
+        echo "SSH access: $SSH_INFO"
+        echo "Web-based terminal: $WEB_INFO"
+          
+    - name: MacOS System running...
+      uses: mxschmitt/action-tmate@v2
