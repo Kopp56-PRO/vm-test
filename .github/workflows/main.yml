@@ -7,95 +7,22 @@ jobs:
     runs-on: macos-latest
 
     steps:
-    - name: Download RustDesk
+    - name: Install tmate
       run: |
-        echo "Downloading RustDesk DMG..."
-        curl -L -o rustdesk.dmg "https://github.com/rustdesk/rustdesk/releases/latest/download/RustDesk-darwin-x64.dmg"
-        if [ $? -ne 0 ]; then
-          echo "Failed to download RustDesk DMG."
-          exit 1
-        fi
+        brew install tmate || echo "tmate is already installed"
 
-        # Verify the DMG file size
-        echo "Verifying RustDesk DMG size..."
-        ls -lh rustdesk.dmg
-
-    - name: Mount RustDesk DMG
+    - name: Setup or Use Existing tmate Session
       run: |
-        echo "Mounting DMG..."
-        hdiutil attach rustdesk.dmg -nobrowse -quiet
-        if [ $? -ne 0 ]; then
-          echo "Failed to mount RustDesk DMG."
-          exit 1
+        if tmate -S /tmp/tmate.sock has-session 2>/dev/null; then
+          echo "Using existing tmate session."
+        else
+          tmate -S /tmp/tmate.sock new-session -d
+          tmate -S /tmp/tmate.sock wait tmate-ready
         fi
+        SSH_INFO=$(tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}')
+        WEB_INFO=$(tmate -S /tmp/tmate.sock display -p '#{tmate_web}')
+        echo "SSH access: $SSH_INFO"
+        echo "Web-based terminal: $WEB_INFO"
 
-        # List mounted volumes to verify the mount
-        echo "Listing mounted volumes..."
-        hdiutil info
-
-    - name: Copy RustDesk to Applications
-      run: |
-        echo "Copying RustDesk to Applications..."
-        sudo cp -R /Volumes/RustDesk/RustDesk.app /Applications/
-        if [ $? -ne 0 ]; then
-          echo "Failed to copy RustDesk to Applications."
-          exit 1
-        fi
-
-    - name: Detach DMG
-      run: |
-        echo "Detaching DMG..."
-        hdiutil detach /Volumes/RustDesk -quiet
-        if [ $? -ne 0 ]; then
-          echo "Failed to detach RustDesk DMG."
-          exit 1
-        fi
-
-    - name: Setup RustDesk
-      run: |
-        echo "Starting RustDesk..."
-        open -a RustDesk
-        if [ $? -ne 0 ]; then
-          echo "Failed to start RustDesk."
-          exit 1
-        fi
-
-        echo "Waiting for RustDesk to initialize..."
-        sleep 30  # Adjust if necessary
-
-    - name: Retrieve RustDesk ID
-      run: |
-        echo "Retrieving RustDesk ID..."
-        rustDeskID=$(osascript <<EOF
-        tell application "RustDesk"
-          activate
-          delay 10  # Adjust the delay as needed
-          -- Insert code here to interact with RustDesk and retrieve the ID
-          set rustDeskID to (do shell script "ps aux | grep RustDesk | grep -v grep | awk '{print $2}'")
-          return rustDeskID
-        end tell
-        EOF
-        )
-        if [ -z "$rustDeskID" ]; then
-          echo "Failed to retrieve RustDesk ID."
-          exit 1
-        fi
-        echo "RustDesk ID: $rustDeskID"
-        echo "$rustDeskID" > rustdesk_id.txt
-
-    - name: Send RustDesk ID to Webhook
-      env:
-        WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
-      run: |
-        echo "Sending RustDesk ID to webhook..."
-        rustDeskID=$(cat rustdesk_id.txt)
-        curl -X POST $WEBHOOK_URL \
-          -H "Content-Type: application/json" \
-          -d '{"message": "➡ SYSTEM MESSAGE ⬅", "rustDeskID": "'"$rustDeskID"'"}'
-        if [ $? -ne 0 ]; then
-          echo "Failed to send RustDesk ID to webhook."
-          exit 1
-        fi
-
-    - name: Keep MacOS Runner Active
-      run: sleep 3600  # Keeps the runner active for 1 hour; adjust as needed
+    - name: Keep Session Alive
+      run: sleep 3600  # Keeps the session alive for 1 hour; adjust as needed
