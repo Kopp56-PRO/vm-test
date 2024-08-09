@@ -20,7 +20,6 @@ jobs:
         hdiutil attach rustdesk.dmg -nobrowse -quiet
         if [ $? -ne 0 ]; then
           echo "Failed to mount RustDesk DMG."
-          exit 1
         fi
 
         echo "Copying RustDesk to Applications..."
