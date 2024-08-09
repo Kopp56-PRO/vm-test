@@ -9,25 +9,49 @@ jobs:
     steps:
     - name: Install RustDesk
       run: |
-        # Download RustDesk
+        echo "Downloading RustDesk..."
         curl -L -o rustdesk.dmg "https://github.com/rustdesk/rustdesk/releases/latest/download/RustDesk-darwin-x64.dmg"
+        if [ $? -ne 0 ]; then
+          echo "Failed to download RustDesk DMG."
+          exit 1
+        fi
 
-        # Mount the DMG
+        echo "Mounting DMG..."
         hdiutil attach rustdesk.dmg -nobrowse -quiet
+        if [ $? -ne 0 ]; then
+          echo "Failed to mount RustDesk DMG."
+          exit 1
+        fi
+
+        echo "Copying RustDesk to Applications..."
         sudo cp -R /Volumes/RustDesk/RustDesk.app /Applications/
+        if [ $? -ne 0 ]; then
+          echo "Failed to copy RustDesk to Applications."
+          exit 1
+        fi
+
+        echo "Detaching DMG..."
         hdiutil detach /Volumes/RustDesk -quiet
+        if [ $? -ne 0 ]; then
+          echo "Failed to detach RustDesk DMG."
+          exit 1
+        fi
 
     - name: Setup RustDesk
       run: |
-        # Start RustDesk in background
+        echo "Starting RustDesk..."
         open -a RustDesk
+        if [ $? -ne 0 ]; then
+          echo "Failed to start RustDesk."
+          exit 1
+        fi
 
-        # Wait for RustDesk to initialize
-        sleep 30  # Adjust the sleep duration if necessary
+        echo "Waiting for RustDesk to initialize..."
+        sleep 30  # Adjust if necessary
 
     - name: Retrieve RustDesk ID
       run: |
-        # Use AppleScript to get RustDesk ID
+        echo "Retrieving RustDesk ID..."
         rustDeskID=$(osascript <<EOF
         tell application "RustDesk"
           activate
@@ -38,6 +62,10 @@ jobs:
         end tell
         EOF
         )
+        if [ -z "$rustDeskID" ]; then
+          echo "Failed to retrieve RustDesk ID."
+          exit 1
+        fi
         echo "RustDesk ID: $rustDeskID"
         echo "$rustDeskID" > rustdesk_id.txt
 
@@ -45,10 +73,15 @@ jobs:
       env:
         WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
       run: |
+        echo "Sending RustDesk ID to webhook..."
         rustDeskID=$(cat rustdesk_id.txt)
         curl -X POST $WEBHOOK_URL \
           -H "Content-Type: application/json" \
-          -d '{"rustDeskID": "'"$rustDeskID"'"}'
+          -d '{"message": "➡ SYSTEM MESSAGE ⬅", "rustDeskID": "'"$rustDeskID"'"}'
+        if [ $? -ne 0 ]; then
+          echo "Failed to send RustDesk ID to webhook."
+          exit 1
+        fi
 
     - name: Keep MacOS Runner Active
       run: sleep 3600  # Keeps the runner active for 1 hour; adjust as needed
