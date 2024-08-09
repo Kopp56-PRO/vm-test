@@ -11,14 +11,14 @@ jobs:
       run: |
         brew install tmate || echo "tmate is already installed"
 
-    - name: Setup tmate session
+    - name: Display tmate session information
       run: |
         if tmate -S /tmp/tmate.sock has-session 2>/dev/null; then
-          echo "tmate session already exists."
+          echo "Using existing tmate session."
         else
           tmate -S /tmp/tmate.sock new-session -d
+          tmate -S /tmp/tmate.sock wait tmate-ready
         fi
-        tmate -S /tmp/tmate.sock wait tmate-ready
         SSH_INFO=$(tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}')
         WEB_INFO=$(tmate -S /tmp/tmate.sock display -p '#{tmate_web}')
         echo "SSH access: $SSH_INFO"
