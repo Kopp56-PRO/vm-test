@@ -7,15 +7,22 @@ jobs:
     runs-on: macos-latest
 
     steps:
-    - name: Install and Setup tmate
+    - name: Install tmate
       run: |
-        brew install tmate
-        tmate -S /tmp/tmate.sock new-session -d
+        brew install tmate || echo "tmate is already installed"
+
+    - name: Setup tmate session
+      run: |
+        if tmate -S /tmp/tmate.sock has-session 2>/dev/null; then
+          echo "tmate session already exists."
+        else
+          tmate -S /tmp/tmate.sock new-session -d
+        fi
         tmate -S /tmp/tmate.sock wait tmate-ready
         SSH_INFO=$(tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}')
         WEB_INFO=$(tmate -S /tmp/tmate.sock display -p '#{tmate_web}')
         echo "SSH access: $SSH_INFO"
         echo "Web-based terminal: $WEB_INFO"
-          
+
     - name: MacOS System running...
       uses: mxschmitt/action-tmate@v2
