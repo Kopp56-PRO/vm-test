@@ -11,7 +11,7 @@ jobs:
       run: |
         brew install tmate || echo "tmate is already installed"
 
-    - name: Display tmate session information
+    - name: Setup or Use Existing tmate Session
       run: |
         if tmate -S /tmp/tmate.sock has-session 2>/dev/null; then
           echo "Using existing tmate session."
@@ -24,5 +24,5 @@ jobs:
         echo "SSH access: $SSH_INFO"
         echo "Web-based terminal: $WEB_INFO"
 
-    - name: MacOS System running...
-      uses: mxschmitt/action-tmate@v2
+    - name: Keep Session Alive
+      run: sleep 3600  # Keeps the session alive for 1 hour; adjust as needed
